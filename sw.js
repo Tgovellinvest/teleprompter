@@ -2,7 +2,7 @@
    Estratégia: responde do cache na hora e atualiza o cache em segundo plano.
    Uma mudança publicada aparece na segunda abertura do app com internet. */
 
-var CACHE = 'teleprompter-v2';
+var CACHE = 'teleprompter-v3';
 var ARQUIVOS = [
   './',
   'index.html',

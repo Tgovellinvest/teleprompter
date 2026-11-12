@@ -80,7 +80,7 @@
   function aplicarTema() {
     document.documentElement.setAttribute('data-theme', ajustes.tema);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', ajustes.tema === 'escuro' ? '#000000' : '#f6f2fb');
+    if (meta) meta.setAttribute('content', ajustes.tema === 'escuro' ? '#000000' : '#eef7fb');
   }
   aplicarTema();
 
