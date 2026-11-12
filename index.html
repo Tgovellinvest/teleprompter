@@ -55,6 +55,7 @@
 
   <!-- Tela 3: teleprompter -->
   <div id="tela-prompter" hidden>
+    <video id="camera" playsinline muted autoplay hidden></video>
     <div id="palco">
       <div id="espelho">
         <div id="texto"></div>
@@ -68,7 +69,23 @@
       <button type="button" id="btn-inicio" class="botao">Início</button>
       <button type="button" id="btn-espelho" class="botao" aria-pressed="false">Espelho</button>
       <button type="button" class="btn-tema botao" aria-label="Alternar tema claro e escuro">Tema</button>
+      <button type="button" id="btn-camera" class="botao" aria-pressed="false">Câmera</button>
+      <button type="button" id="btn-gravar" class="botao gravar">● Gravar</button>
       <button type="button" id="btn-play" class="botao primario">Ler</button>
+    </div>
+
+    <button type="button" id="rec-flutuante" hidden aria-label="Parar a gravação"><span class="ponto"></span><span id="rec-tempo">00:00</span> Parar</button>
+
+    <div id="resultado" hidden>
+      <div class="caixa" role="dialog" aria-modal="true" aria-labelledby="res-titulo">
+        <h2 id="res-titulo">Gravação pronta</h2>
+        <video id="res-video" controls playsinline></video>
+        <p id="res-info" class="dica"></p>
+        <div class="acoes">
+          <button type="button" id="res-salvar" class="botao primario">Salvar no iPhone</button>
+          <button type="button" id="res-fechar" class="botao">Fechar</button>
+        </div>
+      </div>
     </div>
 
     <div id="painel" class="controles">

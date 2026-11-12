@@ -241,8 +241,8 @@ input[type="text"]:focus, textarea:focus, .botao:focus-visible {
 #barra {
   top: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow-x: auto;
   padding: calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) 8px calc(10px + env(safe-area-inset-left));
   border-bottom: 1px solid var(--borda);
 }
@@ -262,6 +262,80 @@ input[type="text"]:focus, textarea:focus, .botao:focus-visible {
 .ajuste b { color: var(--texto); font-variant-numeric: tabular-nums; }
 .ajuste input[type="range"] { width: 100%; height: 32px; margin: 0; accent-color: var(--destaque); }
 .dica { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 12px; color: var(--suave); }
+
+/* ---------- câmera e gravação ---------- */
+
+#camera {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* prévia espelhada, como um espelho; o vídeo gravado sai sem inverter */
+  background: #000;
+}
+#tela-prompter.com-camera { background: #000; }
+#tela-prompter.com-camera #palco { background: rgba(0, 0, 0, 0.5); }
+#tela-prompter.com-camera #texto { color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+#tela-prompter.com-camera #guia { background: rgba(255, 255, 255, 0.16); }
+#tela-prompter.com-camera #contagem { background: rgba(0, 0, 0, 0.35); color: #fff; }
+
+.botao.gravar { color: var(--perigo); }
+.botao.gravar.ativo { background: var(--perigo); color: #fff; border-color: var(--perigo); }
+
+#rec-flutuante {
+  position: absolute;
+  z-index: 6;
+  top: calc(10px + env(safe-area-inset-top));
+  right: calc(10px + env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: rgba(179, 54, 74, 0.92);
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  min-height: 44px;
+  cursor: pointer;
+}
+#rec-flutuante .ponto { width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: piscar 1s steps(2, start) infinite; }
+@keyframes piscar { to { visibility: hidden; } }
+
+#resultado {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(20, 15, 40, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  cursor: default;
+}
+#resultado .caixa {
+  width: 100%;
+  max-width: 460px;
+  max-height: 100%;
+  overflow: auto;
+  background: var(--cartao);
+  color: var(--texto);
+  border: 1px solid var(--borda);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+#resultado h2 { margin: 0; font-size: 18px; }
+#resultado video { width: 100%; max-height: 50vh; border-radius: 12px; background: #000; }
+#resultado .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+#resultado .acoes .botao { flex: 1; }
+#res-info { margin: 0; text-align: left; }
 
 @media (orientation: landscape) and (max-height: 500px) {
   #painel { grid-template-columns: repeat(4, 1fr); padding-top: 6px; }
@@ -316,4 +390,5 @@ input[type="text"]:focus, textarea:focus, .botao:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .controles, #aviso { transition: none; }
+  #rec-flutuante .ponto { animation: none; }
 }

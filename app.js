@@ -392,14 +392,16 @@
   }
 
   function sairPrompter() {
+    if (gravando) { avisar('Pare a gravação antes de sair.'); return; }
     pausar();
+    desligarCamera();
     soltarTela();
     mostrar('tela-lista');
   }
 
   // Toque em qualquer ponto fora dos controles alterna ler/pausar.
   prompter.addEventListener('click', function (ev) {
-    if (ev.target.closest && ev.target.closest('.controles')) return;
+    if (ev.target.closest && ev.target.closest('.controles, #rec-flutuante, #resultado')) return;
     alternar();
   });
 
@@ -429,6 +431,212 @@
     if (!prompter.hidden) medir(true);
   });
 
+  // ---------- câmera e gravação ----------
+  // A câmera frontal fica atrás do texto. O vídeo gravado leva imagem e áudio,
+  // sem o texto do roteiro. Tudo acontece no aparelho; nada é enviado a servidor.
+
+  var elCamera = $('camera');
+  var fluxo = null;         // MediaStream
+  var gravador = null;      // MediaRecorder
+  var pedacos = [];
+  var gravando = false;
+  var inicioGravacao = 0;
+  var tempoTimer = null;
+  var resultado = null;     // { blob, url, nome, salvo }
+
+  function temGravador() { return typeof window.MediaRecorder === 'function'; }
+
+  function erroCamera(e) {
+    var nome = e && e.name;
+    if (nome === 'NotAllowedError' || nome === 'SecurityError') {
+      avisar('Câmera ou microfone negados. Libere nos Ajustes do iPhone, em Safari.');
+    } else if (nome === 'NotFoundError' || nome === 'OverconstrainedError') {
+      avisar('Não encontrei a câmera ou o microfone.');
+    } else if (e && e.message === 'sem-camera') {
+      avisar('Este navegador não dá acesso à câmera.');
+    } else {
+      avisar('Não consegui abrir a câmera.');
+    }
+  }
+
+  function ligarCamera() {
+    if (fluxo) return Promise.resolve(fluxo);
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+      return Promise.reject(new Error('sem-camera'));
+    }
+    var retrato = window.innerHeight > window.innerWidth;
+    return navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user',
+        width: { ideal: retrato ? 1080 : 1920 },
+        height: { ideal: retrato ? 1920 : 1080 }
+      },
+      audio: { echoCancellation: true, noiseSuppression: true }
+    }).then(function (s) {
+      fluxo = s;
+      s.getTracks().forEach(function (t) {
+        t.addEventListener('ended', function () { if (gravando) pararGravacao(); });
+      });
+      elCamera.srcObject = s;
+      elCamera.hidden = false;
+      var p = elCamera.play();
+      if (p && p.catch) p.catch(function () { /* a prévia é só visual */ });
+      prompter.classList.add('com-camera');
+      $('btn-camera').setAttribute('aria-pressed', 'true');
+      return s;
+    });
+  }
+
+  function desligarCamera() {
+    if (fluxo) fluxo.getTracks().forEach(function (t) { t.stop(); });
+    fluxo = null;
+    elCamera.srcObject = null;
+    elCamera.hidden = true;
+    prompter.classList.remove('com-camera');
+    $('btn-camera').setAttribute('aria-pressed', 'false');
+  }
+
+  function escolherTipo() {
+    var tipos = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    for (var i = 0; i < tipos.length; i++) {
+      try { if (MediaRecorder.isTypeSupported(tipos[i])) return tipos[i]; } catch (e) { /* tenta o próximo */ }
+    }
+    return '';
+  }
+
+  function doisDigitos(n) { return (n < 10 ? '0' : '') + n; }
+
+  function atualizarTempo() {
+    var s = Math.floor((Date.now() - inicioGravacao) / 1000);
+    $('rec-tempo').textContent = doisDigitos(Math.floor(s / 60)) + ':' + doisDigitos(s % 60);
+  }
+
+  function marcarGravacao(ligada) {
+    $('rec-flutuante').hidden = !ligada;
+    $('btn-gravar').classList.toggle('ativo', ligada);
+    $('btn-gravar').textContent = ligada ? '■ Parar' : '● Gravar';
+  }
+
+  function iniciarGravacao() {
+    if (gravando) return;
+    if (!temGravador()) {
+      avisar('Gravar pelo navegador precisa do iOS 14.3 ou mais novo.');
+      return;
+    }
+    ligarCamera().then(function (s) {
+      var tipo = escolherTipo();
+      var opcoes = { videoBitsPerSecond: 8000000 };
+      if (tipo) opcoes.mimeType = tipo;
+      try {
+        gravador = new MediaRecorder(s, opcoes);
+      } catch (e) {
+        try { gravador = new MediaRecorder(s); } catch (e2) { gravador = null; }
+      }
+      if (!gravador) { avisar('Não consegui iniciar a gravação.'); return; }
+
+      pedacos = [];
+      gravador.ondataavailable = function (ev) { if (ev.data && ev.data.size) pedacos.push(ev.data); };
+      gravador.onerror = function () { avisar('A gravação foi interrompida.'); };
+      gravador.onstop = finalizarGravacao;
+      gravador.start(1000);
+      gravando = true;
+      inicioGravacao = Date.now();
+      atualizarTempo();
+      clearInterval(tempoTimer);
+      tempoTimer = setInterval(atualizarTempo, 500);
+      marcarGravacao(true);
+      tocar(); // contagem 3-2-1 e rolagem; a gravação já está rodando
+    }).catch(erroCamera);
+  }
+
+  function pararGravacao() {
+    if (!gravando) return;
+    pausar();
+    gravando = false;
+    clearInterval(tempoTimer);
+    marcarGravacao(false);
+    try {
+      if (gravador && gravador.state !== 'inactive') gravador.stop(); else finalizarGravacao();
+    } catch (e) { finalizarGravacao(); }
+  }
+
+  function finalizarGravacao() {
+    var tipo = (gravador && gravador.mimeType) || escolherTipo() || 'video/mp4';
+    var base = tipo.split(';')[0];
+    var blob = new Blob(pedacos, { type: base });
+    pedacos = [];
+    gravador = null;
+    if (!blob.size) { avisar('A gravação saiu vazia. Tente de novo.'); return; }
+
+    var d = new Date();
+    var carimbo = d.getFullYear() + doisDigitos(d.getMonth() + 1) + doisDigitos(d.getDate()) + '-' +
+      doisDigitos(d.getHours()) + doisDigitos(d.getMinutes()) + doisDigitos(d.getSeconds());
+    var ext = base.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+    resultado = { blob: blob, url: URL.createObjectURL(blob), nome: 'teleprompter-' + carimbo + '.' + ext, salvo: false };
+
+    $('res-video').src = resultado.url;
+    var mb = (blob.size / 1048576).toFixed(1).replace('.', ',');
+    $('res-info').textContent = mb + ' MB · ' + ext.toUpperCase() +
+      (ext === 'webm' ? ' (este formato pode não abrir no app Fotos)' : '') +
+      '. Toque em Salvar e escolha “Salvar vídeo” para ir ao Rolo da câmera.';
+    $('resultado').hidden = false;
+  }
+
+  function salvarResultado() {
+    if (!resultado) return;
+    var r = resultado;
+    var arquivo;
+    try { arquivo = new File([r.blob], r.nome, { type: r.blob.type }); } catch (e) { arquivo = null; }
+    if (arquivo && navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+      navigator.share({ files: [arquivo] }).then(function () { r.salvo = true; }).catch(function (e) {
+        if (!e || e.name !== 'AbortError') baixarVideo(r);
+      });
+    } else {
+      baixarVideo(r);
+    }
+  }
+
+  function baixarVideo(r) {
+    try {
+      var a = document.createElement('a');
+      a.href = r.url; a.download = r.nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      r.salvo = true;
+    } catch (e) {
+      avisar('Não foi possível salvar o vídeo neste navegador.');
+    }
+  }
+
+  function descartarResultado() {
+    if (resultado) URL.revokeObjectURL(resultado.url);
+    resultado = null;
+    $('res-video').removeAttribute('src');
+    $('res-video').load();
+    $('resultado').hidden = true;
+  }
+
+  function fecharResultado() {
+    if (resultado && !resultado.salvo) {
+      perguntar('Fechar sem salvar? A gravação será perdida.', { botao: 'Fechar sem salvar', perigo: true })
+        .then(function (ok) { if (ok) descartarResultado(); });
+    } else {
+      descartarResultado();
+    }
+  }
+
+  $('btn-camera').addEventListener('click', function () {
+    if (gravando) { avisar('Pare a gravação antes de desligar a câmera.'); return; }
+    if (fluxo) desligarCamera(); else ligarCamera().catch(erroCamera);
+  });
+  $('btn-gravar').addEventListener('click', function () {
+    if (gravando) pararGravacao(); else iniciarGravacao();
+  });
+  $('rec-flutuante').addEventListener('click', pararGravacao);
+  $('res-salvar').addEventListener('click', salvarResultado);
+  $('res-fechar').addEventListener('click', fecharResultado);
+
   // ---------- manter a tela ligada (Screen Wake Lock) ----------
   // Se a API não existir ou o sistema negar, segue sem travar e sem erro.
 
@@ -452,6 +660,7 @@
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
+      if (gravando) pararGravacao();
       if (tocando || contagemTimer) pausar();
     } else if (!prompter.hidden && !trava) {
       travarTela(); // o sistema solta a trava quando o app vai para o fundo
