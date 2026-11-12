@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="claro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Teleprompter</title>
+  <meta name="description" content="Teleprompter simples para ler roteiros no iPhone.">
+  <meta name="theme-color" content="#f6f2fb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Teleprompter">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Tela 1: lista de roteiros -->
+  <main id="tela-lista" class="tela">
+    <header class="topo">
+      <h1>Roteiros</h1>
+      <button type="button" class="btn-tema botao discreto" aria-label="Alternar tema claro e escuro">Tema</button>
+    </header>
+
+    <button type="button" id="btn-novo" class="botao primario largo">+ Novo roteiro</button>
+
+    <ul id="lista" class="lista"></ul>
+    <p id="vazio" class="vazio" hidden>Nenhum roteiro ainda. Toque em “Novo roteiro” e cole seu texto.</p>
+
+    <footer class="rodape">
+      <button type="button" id="btn-exportar" class="botao">Exportar JSON</button>
+      <button type="button" id="btn-importar" class="botao">Importar JSON</button>
+      <input type="file" id="arquivo" accept=".json,application/json" hidden>
+    </footer>
+  </main>
+
+  <!-- Tela 2: editor -->
+  <main id="tela-editor" class="tela" hidden>
+    <header class="topo">
+      <button type="button" id="btn-cancelar" class="botao discreto">Cancelar</button>
+      <button type="button" id="btn-salvar" class="botao primario">Salvar</button>
+    </header>
+    <label class="campo">
+      <span>Título</span>
+      <input type="text" id="ed-titulo" maxlength="120" placeholder="Ex.: Entrevista, abertura" autocomplete="off">
+    </label>
+    <label class="campo cresce">
+      <span>Texto</span>
+      <textarea id="ed-texto" placeholder="Cole ou escreva o roteiro aqui"></textarea>
+    </label>
+  </main>
+
+  <!-- Tela 3: teleprompter -->
+  <div id="tela-prompter" hidden>
+    <div id="palco">
+      <div id="espelho">
+        <div id="texto"></div>
+      </div>
+    </div>
+    <div id="guia" aria-hidden="true"></div>
+    <div id="contagem" hidden aria-live="assertive"></div>
+
+    <div id="barra" class="controles">
+      <button type="button" id="btn-sair" class="botao">Sair</button>
+      <button type="button" id="btn-inicio" class="botao">Início</button>
+      <button type="button" id="btn-espelho" class="botao" aria-pressed="false">Espelho</button>
+      <button type="button" class="btn-tema botao" aria-label="Alternar tema claro e escuro">Tema</button>
+      <button type="button" id="btn-play" class="botao primario">Ler</button>
+    </div>
+
+    <div id="painel" class="controles">
+      <label class="ajuste"><span>Velocidade <b id="v-velocidade"></b></span>
+        <input type="range" id="r-velocidade" min="5" max="200" step="1"></label>
+      <label class="ajuste"><span>Fonte <b id="v-fonte"></b></span>
+        <input type="range" id="r-fonte" min="20" max="120" step="1"></label>
+      <label class="ajuste"><span>Entrelinha <b id="v-entrelinha"></b></span>
+        <input type="range" id="r-entrelinha" min="1" max="2.5" step="0.05"></label>
+      <label class="ajuste"><span>Margem <b id="v-margem"></b></span>
+        <input type="range" id="r-margem" min="4" max="30" step="1"></label>
+      <p class="dica">Toque no texto para ler ou pausar.</p>
+    </div>
+  </div>
+
+  <!-- Diálogo simples (renomear / apagar) -->
+  <div id="modal" hidden>
+    <div class="caixa" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <h2 id="modal-titulo"></h2>
+      <input type="text" id="modal-campo" maxlength="120" autocomplete="off">
+      <div class="acoes">
+        <button type="button" id="modal-nao" class="botao">Cancelar</button>
+        <button type="button" id="modal-sim" class="botao primario">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
